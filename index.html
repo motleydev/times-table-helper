@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <style>
+            body {
+                font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+                margin: 0;
+                padding: 2rem;
+            }
+
+            .screen-view {
+                max-width: 800px;
+                margin: 0 auto;
+            }
+
+            .header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 2rem;
+            }
+
+            .button {
+                padding: 0.5rem 1rem;
+                background: #333;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+            }
+
+            .tabs {
+                display: flex;
+                gap: 1rem;
+                margin-bottom: 1rem;
+                border-bottom: 1px solid #eee;
+            }
+
+            .tab {
+                padding: 0.5rem 1rem;
+                cursor: pointer;
+                background: none;
+                border: none;
+                border-bottom: 2px solid transparent;
+                margin-bottom: -1px;
+            }
+
+            .tab.active {
+                border-bottom-color: #333;
+            }
+
+            .print-title {
+                text-align: center;
+                margin: 1rem 0 2rem;
+            }
+
+            .grid {
+                display: grid;
+                grid-template-columns: repeat(5, 1fr);
+                gap: 10px;
+                width: 100%;
+                box-sizing: border-box;
+            }
+
+            .problem {
+                aspect-ratio: 1;
+                border: 1px solid #000;
+                display: flex;
+                flex-direction: column;
+                box-sizing: border-box;
+            }
+
+            .question-area {
+                flex: 1;
+                position: relative;
+                border-bottom: 1px solid #000;
+                padding: 1rem;
+            }
+
+            .numbers {
+                position: absolute;
+                top: 0.5rem;
+                right: 0.5rem;
+                display: flex;
+                flex-direction: column;
+                align-items: flex-end;
+            }
+
+            /* Screen view specific styles */
+            @media screen {
+                .number {
+                    font-size: 32px;
+                    line-height: 1.2;
+                }
+
+                .multiply-symbol {
+                    position: absolute;
+                    left: 0.5rem;
+                    font-size: 28px;
+                    top: 75%;
+                    font-weight: bold;
+                    transform: translateY(-50%);
+                    opacity: 0.5;
+                }
+
+                .answer-area {
+                    flex: 1;
+                    display: grid;
+                    place-items: center;
+                    font-size: 32px;
+                }
+            }
+
+            #print-version {
+                display: none;
+            }
+
+            /* Print specific styles */
+            @media print {
+                @page {
+                    margin: 0.5in;
+                    size: portrait;
+                }
+
+                body {
+                    padding: 0;
+                }
+
+                .screen-view {
+                    display: none;
+                }
+
+                #print-version {
+                    display: block;
+                }
+
+                .print-sheet {
+                    page-break-after: always;
+                }
+
+                .grid {
+                    gap: 0;
+                    margin-right: -1px;
+                }
+
+                .number {
+                    font-size: 24pt;
+                    /* Changed to points */
+                    line-height: 1.2;
+                    margin-right: 0.75rem;
+                }
+
+                .multiply-symbol {
+                    position: absolute;
+                    left: 1rem;
+                    bottom: 1.25rem;
+                    font-size: 24pt;
+                    font-weight: bold;
+                    /* Changed to points */
+                    opacity: 0.5;
+                }
+
+                .answer-area {
+                    flex: 1;
+                    display: grid;
+                    place-items: center;
+                    font-size: 24pt;
+                    /* Changed to points */
+                    padding-bottom: 3rem;
+                }
+
+                .problem {}
+
+                .print-title {
+                    font-size: 14pt;
+                    /* Added print title size */
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="screen-view">
+            <div class="header">
+                <h1>Times Tables Practice</h1>
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <div>Set ID: <span id="problem-set-id"></span></div>
+                    <button class="button" onclick="generateNewSet()">Generate New Set</button>
+                </div>
+            </div>
+
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('practice')">Practice Sheet</button>
+                <button class="tab" onclick="switchTab('answers')">Answer Key</button>
+            </div>
+
+            <div id="practice" class="grid"></div>
+            <div id="answers" class="grid" style="display: none;"></div>
+        </div>
+
+        <div id="print-version">
+            <div class="print-sheet">
+                <h2 class="print-title">Practice Sheet (Set ID: <span class="problem-set-id-print"></span>)</h2>
+                <div id="print-practice" class="grid"></div>
+            </div>
+            <div class="print-sheet">
+                <h2 class="print-title">Answer Key (Set ID: <span class="problem-set-id-print"></span>)</h2>
+                <div id="print-answers" class="grid"></div>
+            </div>
+        </div>
+
+        <script>
+            function generateProblemSetHash(problems) {
+                const problemString = problems
+                    .map(p => `${p.num1}${p.num2}`)
+                    .join('');
+
+                let hash = 5381;
+                for (let i = 0; i < problemString.length; i++) {
+                    hash = ((hash << 5) + hash) + problemString.charCodeAt(i);
+                    hash = hash & 0xFFFFFFFF;
+                }
+
+                return hash
+                    .toString(36)
+                    .slice(-4)
+                    .toUpperCase();
+            }
+
+            function switchTab(tab) {
+                document
+                    .querySelectorAll('.tab')
+                    .forEach(t => t.classList.remove('active'));
+                document
+                    .querySelector(`.tab[onclick*="${tab}"]`)
+                    .classList
+                    .add('active');
+
+                document
+                    .getElementById('practice')
+                    .style
+                    .display = tab === 'practice'
+                        ? 'grid'
+                        : 'none';
+                document
+                    .getElementById('answers')
+                    .style
+                    .display = tab === 'answers'
+                        ? 'grid'
+                        : 'none';
+            }
+
+            function generateProblem() {
+                const num1 = Math.floor(Math.random() * 8) + 2;
+                const num2 = Math.floor(Math.random() * 8) + 2;
+                return {
+                    num1,
+                    num2,
+                    answer: num1 * num2
+                };
+            }
+
+            function renderProblem(problem, showAnswer) {
+                return `
+        <div class="problem">
+          <div class="question-area">
+            <div class="numbers">
+              <div class="number">${problem.num1}</div>
+              <div class="number">${problem.num2}</div>
+            </div>
+            <div class="multiply-symbol">×</div>
+          </div>
+          <div class="answer-area">
+            ${showAnswer
+                    ? problem.answer
+                    : ' '}
+          </div>
+        </div>
+      `;
+            }
+
+            function updateSetId(hash) {
+                document
+                    .getElementById('problem-set-id')
+                    .textContent = hash;
+                document
+                    .querySelectorAll('.problem-set-id-print')
+                    .forEach(el => {
+                        el.textContent = hash;
+                    });
+            }
+
+            function generateNewSet() {
+                const problems = Array(25)
+                    .fill()
+                    .map(() => generateProblem());
+                const hash = generateProblemSetHash(problems);
+
+                updateSetId(hash);
+
+                ['practice', 'answers', 'print-practice', 'print-answers'].forEach(id => {
+                    document
+                        .getElementById(id)
+                        .innerHTML = problems
+                        .map(p => renderProblem(p, id.includes('answers')))
+                        .join('');
+                });
+            }
+
+            // Initial generation
+            generateNewSet();
+        </script>
+    </body>
+</html>
